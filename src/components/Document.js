@@ -23,6 +23,7 @@ import {
 } from '../actions';
 import App from './App';
 import $ from 'jquery';
+import Konva from 'konva';
 
 const styles = {
     list: {
@@ -42,6 +43,7 @@ class Document extends React.Component {
         window.parent.postMessage(obj, '*');
     };
     state = {};
+
     constructor(props) {
         super(props);
         // document.getElementById().onmousemove(e) =>
@@ -79,11 +81,145 @@ class Document extends React.Component {
     originalDocument = null;
 
     placeSignatureOnImageWithoutMerging(e) {
+        const signHeight = document.getElementById('document-container')
+            ? (this.state.originalSignHeight * (document.getElementById('document').height / this.state.originalHeight))
+            : '0px';
+        const signWidth =  document.getElementById('document-container')
+            ? (this.state.originalSignWidth * (document.getElementById('document').width / this.state.originalWidth))
+            : '0px'
+        // KONVA js
+        // inserire aletzza e larghezza di firma da dare al div contenitore
+        let width = document.getElementById('document').width;
+        let height = document.getElementById('document').height;
+
+        const stage = new Konva.Stage({
+            container: 'preview-sign',
+            width: width,
+            height: height,
+        });
+        console.log('positionL ', stage.absolutePosition());
+
+        const layer = new Konva.Layer();
+        stage.add(layer);
+
+
+        const signatureImage = new Konva.Image({
+            height : signHeight,
+            width : signWidth
+        });
+
+        const imgSignatureGroup = new Konva.Group({
+            x: e.clientX,
+            y: e.clientY,
+            draggable: false,
+        });
+        layer.add(imgSignatureGroup);
+        imgSignatureGroup.add(signatureImage);
+        this.addAnchor(imgSignatureGroup, 0, 0, 'topLeft');
+        this.addAnchor(imgSignatureGroup, signWidth, 0, 'topRight');
+        this.addAnchor(imgSignatureGroup, signWidth, signHeight, 'bottomRight');
+        this.addAnchor(imgSignatureGroup, 0, signWidth, 'bottomLeft');
+
+
+        const imageObj1 = new Image();
+        imageObj1.onload = function () {
+            signatureImage.image(imageObj1);
+            layer.draw();
+        };
+        imageObj1.src = this.state.signatureData;
+
         this.setState({
             showSignaturePreview: true,
             previewX: e.clientX + 'px',
             previewY: e.clientY + 'px',
         })
+    }
+
+    update(activeAnchor) {
+        const group = activeAnchor.getParent();
+
+        const topLeft = group.get('.topLeft')[0];
+        const topRight = group.get('.topRight')[0];
+        const bottomRight = group.get('.bottomRight')[0];
+        const bottomLeft = group.get('.bottomLeft')[0];
+        const image = group.get('Image')[0];
+
+        const anchorX = activeAnchor.getX();
+        const anchorY = activeAnchor.getY();
+
+        // update anchor positions
+        switch (activeAnchor.getName()) {
+            case 'topLeft':
+                topRight.y(anchorY);
+                bottomLeft.x(anchorX);
+                break;
+            case 'topRight':
+                topLeft.y(anchorY);
+                bottomRight.x(anchorX);
+                break;
+            case 'bottomRight':
+                bottomLeft.y(anchorY);
+                topRight.x(anchorX);
+                break;
+            case 'bottomLeft':
+                bottomRight.y(anchorY);
+                topLeft.x(anchorX);
+                break;
+        }
+
+        image.position(topLeft.position());
+
+        const width = topRight.getX() - topLeft.getX();
+        const height = bottomLeft.getY() - topLeft.getY();
+        if (width && height) {
+            image.width(width);
+            image.height(height);
+        }
+    }
+
+    addAnchor(group, x, y, name) {
+        const stage = group.getStage();
+        const layer = group.getLayer();
+
+        const anchor = new Konva.Circle({
+            x: x,
+            y: y,
+            stroke: '#666',
+            fill: '#ddd',
+            strokeWidth: 2,
+            radius: 8,
+            name: name,
+            draggable: true,
+            dragOnTop: false,
+        });
+
+        anchor.on('dragmove', () => {
+            this.update(anchor);
+            layer.draw();
+        });
+        anchor.on('mousedown touchstart', function () {
+            group.draggable(false);
+            this.moveToTop();
+        });
+        anchor.on('dragend', function () {
+            group.draggable(true);
+            layer.draw();
+        });
+        // add hover styling
+        anchor.on('mouseover', function () {
+            const layer = this.getLayer();
+            document.body.style.cursor = 'pointer';
+            this.strokeWidth(4);
+            layer.draw();
+        });
+        anchor.on('mouseout', function () {
+            const layer = this.getLayer();
+            document.body.style.cursor = 'default';
+            this.strokeWidth(2);
+            layer.draw();
+        });
+
+        group.add(anchor);
     }
 
     // Metodo che viene chiamato quando clicco per depositare la firma
@@ -160,7 +296,7 @@ class Document extends React.Component {
     }
 
     zoom = () => {
-        var myImg = document.getElementById('document');
+        const myImg = document.getElementById('document');
         if (myImg && this.props.ZoomValue !== null) {
             myImg.style.width = this.props.ZoomValue + 'px';
         }
@@ -298,7 +434,7 @@ class Document extends React.Component {
                         }
                     )
                     .then(resSignData => {
-                        var urlCreator = window.URL || window.webkitURL;
+                        const urlCreator = window.URL || window.webkitURL;
                         this.props.dispatch(setNumberOfDocuments(this.state.noOfDocuments));
                         const img = document.createElement('img');
                         img.src = urlCreator.createObjectURL(resDocument.data);
@@ -530,7 +666,7 @@ class Document extends React.Component {
                                     }
                                 )
                                 .then(resSignData => {
-                                    var urlCreator = window.URL || window.webkitURL;
+                                    const urlCreator = window.URL || window.webkitURL;
                                     this.props.dispatch(
                                         setNumberOfDocuments(this.state.noOfDocuments)
                                     );
@@ -878,72 +1014,61 @@ class Document extends React.Component {
                                         </Grid>
                                     </Grid>
                                     <div id="document-container">
-                                    <ScrollContainer
-                                        hideScrollbars={false}
-                                        className="scroll-container main"
-                                    >
-                                        <img
-                                            onClick={this.placeSignatureOnImageWithoutMerging.bind(this)}
-                                            id="document"
-                                            alt="Document"
-                                            onLoad={() => {
-                                                $(function() {
+                                        <ScrollContainer
+                                            hideScrollbars={false}
+                                            className="scroll-container main"
+                                        >
+                                            <img
+                                                onClick={this.placeSignatureOnImageWithoutMerging.bind(this)}
+                                                id="document"
+                                                alt="Document"
+                                                onLoad={() => {
+                                                    $(function () {
 
 
+                                                        $("#document")
+                                                            .mousemove(function (e) {
+                                                                $(".cursor")
+                                                                    .show()
+                                                                    .css({
+                                                                        left: e.clientX,
+                                                                        top: e.clientY + $("#testarea").scrollTop(),
+                                                                        display: "block"
+                                                                    });
+                                                            })
+                                                            .mouseout(function (event) {
+                                                                $(".cursor").hide();
+                                                            });
+                                                    });
+                                                    this.setState({showCursor: true});
+                                                }}
+                                                src={
+                                                    this.state.documentData !== null
+                                                        ? this.state.documentData
+                                                        : ''
+                                                }
+                                            />
+                                        </ScrollContainer>
 
-                                                    $("#document")
-                                                        .mousemove(function(e) {
-                                                            $(".cursor")
-                                                                .show()
-                                                                .css({
-                                                                    left: e.clientX,
-                                                                    top: e.clientY + $("#testarea").scrollTop(),
-                                                                    display: "block"
-                                                                });
-                                                        })
-                                                        .mouseout(function(event) {
-                                                            $(".cursor").hide();
-                                                        });
-                                                });
-                                                this.setState({showCursor: true});
-                                            }}
-                                            src={
-                                                this.state.documentData !== null
-                                                    ? this.state.documentData
-                                                    : ''
-                                            }
-                                        />
-                                    </ScrollContainer>
-                                        {this.state.showSignaturePreview === true && (
-                                            <div id="preview-sign" style={{
-                                                background: "green",
-                                                position: 'absolute',
-                                                left: this.state.previewX,
-                                                top: this.state.previewY,
-                                                width: this.state.originalSignWidth &&
-                                                this.state.signerMode &&
-                                                document.getElementById('document')
-                                                    ? (this.state.originalSignWidth * (document.getElementById('document').width / this.state.originalWidth))
-                                                    : '0px',
-                                                height: this.state.originalSignHeight &&
-                                                this.state.signerMode &&
-                                                document.getElementById('document')
-                                                    ? (this.state.originalSignHeight * (document.getElementById('document').height / this.state.originalHeight))
-                                                    : '0px',
+                                        <div id="preview-sign" style={{
+                                            // background: "green",
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0
 
-                                            }}>
-                                            <img src={this.state.signatureData}
-                                                 alt="signPreview"
-                                                 className="signatureImage"
-                                                 style={{
-                                                     height:
-                                                       '100%',
-                                                     width:
-                                                         '100%'
-                                                 }}
-                                                 />
-                                            </div>
-                                        )}
+                                        }}>
+                                            {/*<img src={this.state.signatureData}*/}
+                                            {/*     alt="signPreview"*/}
+                                            {/*     className="signatureImage"*/}
+                                            {/*     style={{*/}
+                                            {/*         height:*/}
+                                            {/*           '100%',*/}
+                                            {/*         width:*/}
+                                            {/*             '100%'*/}
+                                            {/*     }}*/}
+                                            {/*     />*/}
+                                        </div>
+
                                     </div>
                                     {this.state.showCursor === true && (
                                         <img
