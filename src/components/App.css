@@ -1,0 +1,56 @@
+.App {
+    text-align: center;
+    position: absolute;
+}
+
+.App-logo {
+    height: 40vmin;
+}
+
+.App-header {
+    background-color: #282c34;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(10px + 2vmin);
+    color: white;
+}
+
+.App-link {
+    color: #09d3ac;
+}
+
+.main img {
+    height: auto;
+    width: 100%;
+}
+
+.main {
+    -webkit-overflow-scrolling: touch; /* momentum scrolling, iOS Safari only*/
+    width: 100%;
+    text-align: center;
+    align-items: center;
+    overflow: auto;
+}
+
+.signatureImage {
+    /*width: 200px;*/
+    /*height: 200px;*/
+    /*position: absolute;*/
+    z-index: 2;
+}
+
+#document {
+    position: relative;
+    z-index: 1;
+}
+
+.cursor {
+    z-index: 3;
+}
+
+#preview-sign {
+    z-index: 4;
+}
