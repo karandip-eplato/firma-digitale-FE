@@ -89,8 +89,13 @@ class Document extends React.Component {
             : '0px'
         // KONVA js
         // inserire aletzza e larghezza di firma da dare al div contenitore
-        let width = document.getElementById('document').width;
-        let height = document.getElementById('document').height;
+        let width = document.getElementById('document').offsetWidth;
+        let height = document.getElementById('document').offsetHeight;
+
+        console.log('Aletzza: ', document.body.scrollHeight, document.getElementById('document-container').offsetHeight)
+        this.setState({
+            previewY: (document.body.scrollHeight - document.getElementById('document-container').offsetHeight)
+        })
 
         const stage = new Konva.Stage({
             container: 'preview-sign',
@@ -108,9 +113,11 @@ class Document extends React.Component {
             width : signWidth
         });
 
+        console.log('client: ', e.clientY);
+
         const imgSignatureGroup = new Konva.Group({
-            x: e.clientX,
-            y: e.clientY,
+            x: e.nativeEvent.offsetX,
+            y: e.nativeEvent.offsetY,
             draggable: false,
         });
         layer.add(imgSignatureGroup);
@@ -118,7 +125,7 @@ class Document extends React.Component {
         this.addAnchor(imgSignatureGroup, 0, 0, 'topLeft');
         this.addAnchor(imgSignatureGroup, signWidth, 0, 'topRight');
         this.addAnchor(imgSignatureGroup, signWidth, signHeight, 'bottomRight');
-        this.addAnchor(imgSignatureGroup, 0, signWidth, 'bottomLeft');
+        this.addAnchor(imgSignatureGroup, 0, signHeight, 'bottomLeft');
 
 
         const imageObj1 = new Image();
@@ -128,11 +135,12 @@ class Document extends React.Component {
         };
         imageObj1.src = this.state.signatureData;
 
-        this.setState({
-            showSignaturePreview: true,
-            previewX: e.clientX + 'px',
-            previewY: e.clientY + 'px',
-        })
+
+        // this.setState({
+        //     showSignaturePreview: true,
+        //     previewX: e.clientX + 'px',
+        //     previewY: e.clientY + 'px',
+        // })
     }
 
     update(activeAnchor) {
@@ -173,8 +181,12 @@ class Document extends React.Component {
         const height = bottomLeft.getY() - topLeft.getY();
         if (width && height) {
             image.width(width);
-            image.height(height);
+            image.height(height)
         }
+
+        console.log('position: ', image.absolutePosition())
+        // this._onMouseMove(image.absolutePosition().x, image.absolutePosition().y);
+        // group.destroy();
     }
 
     addAnchor(group, x, y, name) {
@@ -223,9 +235,10 @@ class Document extends React.Component {
     }
 
     // Metodo che viene chiamato quando clicco per depositare la firma
-    _onMouseMove(e) {
-        const x = e.nativeEvent.offsetX;
-        const y = e.nativeEvent.offsetY;
+    _onMouseMove(x, y) {
+        console.log('x e y: ', x, y)
+        // const x = e.nativeEvent.offsetX;
+        // const y = e.nativeEvent.offsetY;
         if (this.state.signerMode === true) {
             const imgWidth = document.getElementById('document').width;
             const imgHeight = document.getElementById('document').height;
@@ -1053,7 +1066,7 @@ class Document extends React.Component {
                                         <div id="preview-sign" style={{
                                             // background: "green",
                                             position: 'absolute',
-                                            top: 0,
+                                            top: this.state.previewY,
                                             left: 0
 
                                         }}>
