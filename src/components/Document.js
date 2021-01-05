@@ -43,7 +43,6 @@ class Document extends React.Component {
         window.parent.postMessage(obj, '*');
     };
     state = {};
-
     constructor(props) {
         super(props);
         // document.getElementById().onmousemove(e) =>
@@ -258,7 +257,8 @@ class Document extends React.Component {
                         mergeData.push({
                             src: this.state.signatureDataArray[index],
                             x: element.coordinates.x,
-                            y: element.coordinates.y
+                            y: element.coordinates.y,
+                            imgHeight: element.coordinates.originalHeight
                         });
                 }
             });
@@ -281,7 +281,9 @@ class Document extends React.Component {
                 outputCoordinates = {
                     pageNo: this.props.DocumentIndex + 1,
                     x: x * (this.state.originalWidth / imgWidth),
-                    y: y * (this.state.originalHeight / imgHeight) + parseInt(this.state.originalSignHeight)
+                    // y: y * (this.state.originalHeight / imgHeight) + parseInt(this.state.originalSignHeight)
+                    y: y * (this.state.originalHeight / imgHeight),
+                    originalHeight: parseInt(this.state.originalSignHeight)
                 };
 
                 this.props.dispatch(
@@ -848,7 +850,7 @@ class Document extends React.Component {
         console.log('Original height: ', this.state.originalHeight);
         this.props.Output.forEach(element => {
             if (element) {
-                const coordinateY = (this.state.originalHeight - ((element.coordinates.y * this.state.dpi) / this.state.dpi)) / this.state.scaleFor72DPI;
+                const coordinateY = (this.state.originalHeight - (((element.coordinates.y + element.coordinates.originalHeight) * this.state.dpi) / this.state.dpi)) / this.state.scaleFor72DPI;
                 const coordinateX = ((element.coordinates.x * this.state.dpi) / this.state.dpi) / this.state.scaleFor72DPI;
                 console.log('Element coordinate y: ', coordinateY);
                 console.log('Element coordinate x: ', coordinateX);
