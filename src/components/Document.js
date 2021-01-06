@@ -78,6 +78,13 @@ class Document extends React.Component {
     defaultSignatures = [];
     nextSignerIndex = 1;
     originalDocument = null;
+    imgSignatureGroup;
+
+    mergeImage() {
+        const sign = this.imgSignatureGroup.get('Image')[0];
+        this._onMouseMove(sign.absolutePosition().x, sign.absolutePosition().y);
+        this.imgSignatureGroup.destroy();
+    }
 
     placeSignatureOnImageWithoutMerging(e) {
         const signHeight = document.getElementById('document-container')
@@ -114,17 +121,17 @@ class Document extends React.Component {
 
         console.log('client: ', e.clientY);
 
-        const imgSignatureGroup = new Konva.Group({
+         this.imgSignatureGroup = new Konva.Group({
             x: e.nativeEvent.offsetX,
             y: e.nativeEvent.offsetY,
-            draggable: false,
+            draggable: true,
         });
-        layer.add(imgSignatureGroup);
-        imgSignatureGroup.add(signatureImage);
-        this.addAnchor(imgSignatureGroup, 0, 0, 'topLeft');
-        this.addAnchor(imgSignatureGroup, signWidth, 0, 'topRight');
-        this.addAnchor(imgSignatureGroup, signWidth, signHeight, 'bottomRight');
-        this.addAnchor(imgSignatureGroup, 0, signHeight, 'bottomLeft');
+        layer.add(this.imgSignatureGroup);
+        this.imgSignatureGroup.add(signatureImage);
+        this.addAnchor(this.imgSignatureGroup, 0, 0, 'topLeft');
+        this.addAnchor(this.imgSignatureGroup, signWidth, 0, 'topRight');
+        this.addAnchor(this.imgSignatureGroup, signWidth, signHeight, 'bottomRight');
+        this.addAnchor(this.imgSignatureGroup, 0, signHeight, 'bottomLeft');
 
 
         const imageObj1 = new Image();
@@ -133,6 +140,28 @@ class Document extends React.Component {
             layer.draw();
         };
         imageObj1.src = this.state.signatureData;
+        // Abilito il tasto "prossimo firmatario"
+        const img = this.imgSignatureGroup.get('Image')[0]
+        const imgWidth = document.getElementById('document').width;
+        const imgHeight = document.getElementById('document').height;
+        const outputCoordinates = {
+            pageNo: this.props.DocumentIndex + 1,
+            x: img.absolutePosition().x * (this.state.originalWidth / imgWidth),
+            // y: y * (this.state.originalHeight / imgHeight) + parseInt(this.state.originalSignHeight)
+            y: img.absolutePosition().y * (this.state.originalHeight / imgHeight),
+            originalHeight: parseInt(this.state.originalSignHeight)
+        };
+
+        console.debug('imposto output: ', outputCoordinates);
+        this.props.dispatch(
+            setOutput(
+                {
+                    user: this.state.signerNames[this.props.SignatureIndex],
+                    coordinates: outputCoordinates
+                },
+                this.props.SignatureIndex
+            )
+        );
 
 
         // this.setState({
@@ -184,6 +213,25 @@ class Document extends React.Component {
         }
 
         console.log('position: ', image.absolutePosition())
+        // const imgWidth = document.getElementById('document').width;
+        // const imgHeight = document.getElementById('document').height;
+        // const outputCoordinates = {
+        //     pageNo: this.props.DocumentIndex + 1,
+        //     x: image.absolutePosition().x * (this.state.originalWidth / imgWidth),
+        //     // y: y * (this.state.originalHeight / imgHeight) + parseInt(this.state.originalSignHeight)
+        //     y: image.absolutePosition().y * (this.state.originalHeight / imgHeight),
+        //     originalHeight: parseInt(this.state.originalSignHeight)
+        // };
+        // console.debug('imposto output');
+        // this.props.dispatch(
+        //     setOutput(
+        //         {
+        //             user: this.state.signerNames[this.props.SignatureIndex],
+        //             coordinates: outputCoordinates
+        //         },
+        //         this.props.SignatureIndex
+        //     )
+        // );
         // this._onMouseMove(image.absolutePosition().x, image.absolutePosition().y);
         // group.destroy();
     }
@@ -285,6 +333,7 @@ class Document extends React.Component {
                     y: y * (this.state.originalHeight / imgHeight),
                     originalHeight: parseInt(this.state.originalSignHeight)
                 };
+                console.debug('Imposto coor: ', outputCoordinates)
 
                 this.props.dispatch(
                     setOutput(
@@ -306,6 +355,39 @@ class Document extends React.Component {
                 });
                 console.log('Document height in 72 dpi in state: ', this.state.heightIn72Dpi);
                 console.log('Document width in 72 dpi in state: ', this.state.widthIn72Dpi);
+
+                this.props.dispatch(
+                    setOutput(
+                        {
+                            user: this.state.signerNames[
+                                this.props.SignatureIndex
+                                ],
+                            coordinates: this.state.outputCoordinates
+                        },
+                        this.props.SignatureIndex
+                    )
+                );
+
+                let NoOfSigns = 0;
+                this.props.Output.forEach(element => {
+                    if (element) {
+                        NoOfSigns = NoOfSigns + 1;
+                    }
+                });
+                if (NoOfSigns === this.state.noOfSigners) {
+                    this.setState({text: true});
+                } else {
+                    this.props.dispatch(
+                        setSignatureIndex(this.nextSignerIndex)
+                    );
+                    this.props.dispatch(setDocumentIndex(0));
+
+                    this.setState({
+                        outputCoordinates: null,
+                        signerMode: true,
+                        showCursor: false
+                    });
+                }
             });
         }
     }
@@ -545,6 +627,7 @@ class Document extends React.Component {
                     const mergeData = [];
                     this.props.Output.forEach(element => {
                         if (element) {
+                            console.debug('Elemento null: ', element)
                             const index = this.state.signerNames.indexOf(element.user);
                             if (currentDocumentIndex === element.coordinates.pageNo - 1)
                                 mergeData.push({
@@ -964,32 +1047,35 @@ class Document extends React.Component {
                                                 <Button
                                                     color="secondary"
                                                     onClick={() => {
-                                                        this.props.dispatch(
-                                                            setOutput(
-                                                                {
-                                                                    user: this.state.signerNames[
-                                                                        this.props.SignatureIndex
-                                                                        ],
-                                                                    coordinates: this.state.outputCoordinates
-                                                                },
-                                                                this.props.SignatureIndex
-                                                            )
-                                                        );
-
-                                                        if (NoOfSigns === this.state.noOfSigners) {
-                                                            this.setState({text: true});
-                                                        } else {
-                                                            this.props.dispatch(
-                                                                setSignatureIndex(this.nextSignerIndex)
-                                                            );
-                                                            this.props.dispatch(setDocumentIndex(0));
-
-                                                            this.setState({
-                                                                outputCoordinates: null,
-                                                                signerMode: true,
-                                                                showCursor: false
-                                                            });
-                                                        }
+                                                        console.debug('click prox: ', this.state.outputCoordinates)
+                                                        this.mergeImage();
+                                                        // this.props.dispatch(
+                                                        //     setOutput(
+                                                        //         {
+                                                        //             user: this.state.signerNames[
+                                                        //                 this.props.SignatureIndex
+                                                        //                 ],
+                                                        //             coordinates: this.state.outputCoordinates
+                                                        //         },
+                                                        //         this.props.SignatureIndex
+                                                        //     )
+                                                        // );
+                                                        //
+                                                        //
+                                                        // if (NoOfSigns === this.state.noOfSigners) {
+                                                        //     this.setState({text: true});
+                                                        // } else {
+                                                        //     this.props.dispatch(
+                                                        //         setSignatureIndex(this.nextSignerIndex)
+                                                        //     );
+                                                        //     this.props.dispatch(setDocumentIndex(0));
+                                                        //
+                                                        //     this.setState({
+                                                        //         outputCoordinates: null,
+                                                        //         signerMode: true,
+                                                        //         showCursor: false
+                                                        //     });
+                                                        // }
                                                     }}
                                                     variant="contained"
                                                     fullWidth
