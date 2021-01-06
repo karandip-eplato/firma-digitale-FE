@@ -43,6 +43,7 @@ class Document extends React.Component {
         window.parent.postMessage(obj, '*');
     };
     state = {};
+
     constructor(props) {
         super(props);
         // document.getElementById().onmousemove(e) =>
@@ -80,19 +81,48 @@ class Document extends React.Component {
     originalDocument = null;
     imgSignatureGroup;
 
+    resizedataURL(datas, wantedWidth, wantedHeight) {
+        // We create an image to receive the Data URI
+        const img = new Image();
+
+        // When the event "onload" is triggered we can resize the image.
+        img.onload = function () {
+            // We create a canvas and get its context.
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            // We set the dimensions at the wanted size.
+            canvas.width = wantedWidth;
+            canvas.height = wantedHeight;
+
+            // We resize the image with the canvas method drawImage();
+            ctx.drawImage(this, 0, 0, wantedWidth, wantedHeight);
+
+            canvas.toDataURL();
+
+            /////////////////////////////////////////
+            // Use and treat your Data URI here !! //
+            /////////////////////////////////////////
+        };
+
+        // We put the Data URI in the image's src attribute
+        img.src = datas;
+    }
+
     mergeImage() {
         const sign = this.imgSignatureGroup.get('Image')[0];
-        this._onMouseMove(sign.absolutePosition().x, sign.absolutePosition().y);
-        this.imgSignatureGroup.destroy();
+        this._onMouseMove(sign.absolutePosition().x, sign.absolutePosition().y, sign.width(), sign.height());
+        // this.imgSignatureGroup.destroy();
     }
 
     placeSignatureOnImageWithoutMerging(e) {
         const signHeight = document.getElementById('document-container')
             ? (this.state.originalSignHeight * (document.getElementById('document').height / this.state.originalHeight))
             : '0px';
-        const signWidth =  document.getElementById('document-container')
+        const signWidth = document.getElementById('document-container')
             ? (this.state.originalSignWidth * (document.getElementById('document').width / this.state.originalWidth))
             : '0px'
+        console.debug('Original h: ', this.state.originalSignHeight, signHeight)
         // KONVA js
         // inserire aletzza e larghezza di firma da dare al div contenitore
         let width = document.getElementById('document').offsetWidth;
@@ -108,20 +138,19 @@ class Document extends React.Component {
             width: width,
             height: height,
         });
-        console.log('positionL ', stage.absolutePosition());
 
         const layer = new Konva.Layer();
         stage.add(layer);
 
 
         const signatureImage = new Konva.Image({
-            height : signHeight,
-            width : signWidth
+            height: signHeight,
+            width: signWidth
         });
 
-        console.log('client: ', e.clientY);
+        console.debug('img w, h: ', signWidth, signHeight);
 
-         this.imgSignatureGroup = new Konva.Group({
+        this.imgSignatureGroup = new Konva.Group({
             x: e.nativeEvent.offsetX,
             y: e.nativeEvent.offsetY,
             draggable: true,
@@ -152,7 +181,6 @@ class Document extends React.Component {
             originalHeight: parseInt(this.state.originalSignHeight)
         };
 
-        console.debug('imposto output: ', outputCoordinates);
         this.props.dispatch(
             setOutput(
                 {
@@ -162,13 +190,6 @@ class Document extends React.Component {
                 this.props.SignatureIndex
             )
         );
-
-
-        // this.setState({
-        //     showSignaturePreview: true,
-        //     previewX: e.clientX + 'px',
-        //     previewY: e.clientY + 'px',
-        // })
     }
 
     update(activeAnchor) {
@@ -212,7 +233,7 @@ class Document extends React.Component {
             image.height(height)
         }
 
-        console.log('position: ', image.absolutePosition())
+        console.log('position: ', image.absolutePosition(), height);
         // const imgWidth = document.getElementById('document').width;
         // const imgHeight = document.getElementById('document').height;
         // const outputCoordinates = {
@@ -281,9 +302,30 @@ class Document extends React.Component {
         group.add(anchor);
     }
 
+    mergeSignatureOnDocument(mergeArray, baseDoc) {
+        return mergeImages([
+            {
+                src: baseDoc,
+                x: 0,
+                y: 0
+            },
+            ...mergeArray
+        ])
+    }
+
+     getBase64Image(img) {
+        var canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        var ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        var dataURL = canvas.toDataURL("image/png");
+        return dataURL.replace(/^data:image\/(png|jpg);base64,/, "");
+    }
+
     // Metodo che viene chiamato quando clicco per depositare la firma
-    _onMouseMove(x, y) {
-        console.log('x e y: ', x, y)
+    _onMouseMove(x, y, w, h) {
+        console.debug('x e y: ', x, y, w, h)
         // const x = e.nativeEvent.offsetX;
         // const y = e.nativeEvent.offsetY;
         if (this.state.signerMode === true) {
@@ -306,12 +348,14 @@ class Document extends React.Component {
                             src: this.state.signatureDataArray[index],
                             x: element.coordinates.x,
                             y: element.coordinates.y,
-                            imgHeight: element.coordinates.originalHeight
+                            // TODO questo height deve essere quello aggiornato
+                            imgHeight: element.coordinates.originalHeight,
+                            imgData: element.coordinates.data
                         });
                 }
             });
-            console.log('signature data: ', this.state.signatureData);
 
+            console.debug('Merge');
             mergeImages([
                 {
                     src: this.originalDocument,
@@ -322,18 +366,36 @@ class Document extends React.Component {
                 {
                     src: this.state.signatureData,
                     x: x * (this.state.originalWidth / imgWidth),
-                    y: y * (this.state.originalHeight / imgHeight)
+                    y: y * (this.state.originalHeight / imgHeight),
                 }
             ]).then(b64 => {
+
+                // Resize immagine di firma
+                const base64 = this.imgSignatureGroup.get('Image')[0];
+                // var canvas = document.createElement('canvas');
+                // var ctx = canvas.getContext('2d');
+                //
+                // // We set the dimensions at the wanted size.
+                // canvas.width = 500;
+                // canvas.height = 500;
+                //
+                // // We resize the image with the canvas method drawImage();
+                // ctx.drawImage(base64, 0, 0, 500, 500);
+                //
+                // var dataURI = canvas.toDataURL();
+                console.debug('Cursor: ', base64.toDataURL());
+                this.imgSignatureGroup.destroy();
+
                 let outputCoordinates = this.state.outputCoordinates;
                 outputCoordinates = {
                     pageNo: this.props.DocumentIndex + 1,
                     x: x * (this.state.originalWidth / imgWidth),
                     // y: y * (this.state.originalHeight / imgHeight) + parseInt(this.state.originalSignHeight)
                     y: y * (this.state.originalHeight / imgHeight),
-                    originalHeight: parseInt(this.state.originalSignHeight)
+                    originalHeight: parseInt(h),
+                    imgData: base64.toDataURL()
                 };
-                console.debug('Imposto coor: ', outputCoordinates)
+                // console.debug('Imposto coor: ', outputCoordinates)
 
                 this.props.dispatch(
                     setOutput(
@@ -564,28 +626,31 @@ class Document extends React.Component {
                                         mergeData.push({
                                             src: signatureDataArray[index],
                                             x: element.coordinates.x,
-                                            y: element.coordinates.y
+                                            y: element.coordinates.y,
                                         });
                                 }
                             });
-                            mergeImages([
-                                {
-                                    src: documentData,
-                                    x: 0,
-                                    y: 0
-                                },
-                                ...mergeData
-                            ]).then(b64 => {
-                                documentData = b64;
-                                this.props.dispatch(showAppbar(1));
-                                this.setState({
-                                    documentData: documentData,
-                                    signatureData: urlCreator.createObjectURL(resSignData.data),
-                                    progress: false,
-                                    signatureDataArray: signatureDataArray
+                            console.debug('Merge');
+                            // mergeImages([
+                            //     {
+                            //         src: documentData,
+                            //         x: 0,
+                            //         y: 0
+                            //     },
+                            //     ...mergeData
+                            // ])
+                            this.mergeSignatureOnDocument(mergeData, documentData)
+                                .then(b64 => {
+                                    documentData = b64;
+                                    this.props.dispatch(showAppbar(1));
+                                    this.setState({
+                                        documentData: documentData,
+                                        signatureData: urlCreator.createObjectURL(resSignData.data),
+                                        progress: false,
+                                        signatureDataArray: signatureDataArray
+                                    });
+                                    this.rerender();
                                 });
-                                this.rerender();
-                            });
                         } else {
                             this.props.dispatch(showAppbar(1));
                             this.setState({
@@ -603,6 +668,7 @@ class Document extends React.Component {
                 this.props.dispatch(setNumberOfDocuments(this.state.noOfDocuments));
                 const img = document.createElement('img');
                 img.src = urlCreator.createObjectURL(resDocument.data);
+                console.debug('size: ', img.width, img.height);
                 img.onload = () => {
                     this.setState({
                         originalWidth: img.width,
@@ -627,34 +693,37 @@ class Document extends React.Component {
                     const mergeData = [];
                     this.props.Output.forEach(element => {
                         if (element) {
-                            console.debug('Elemento null: ', element)
                             const index = this.state.signerNames.indexOf(element.user);
+                            console.debug('B64: ', element)
                             if (currentDocumentIndex === element.coordinates.pageNo - 1)
                                 mergeData.push({
                                     src: signatureDataArray[index],
                                     x: element.coordinates.x,
-                                    y: element.coordinates.y
+                                    y: element.coordinates.y,
                                 });
                         }
                     });
-                    mergeImages([
-                        {
-                            src: documentData,
-                            x: 0,
-                            y: 0
-                        },
-                        ...mergeData
-                    ]).then(b64 => {
-                        documentData = b64;
-                        this.props.dispatch(showAppbar(1));
-                        this.setState({
-                            documentData: documentData,
-                            signatureData: resSignData,
-                            progress: false,
-                            signatureDataArray: signatureDataArray
+                    console.debug('Merge');
+                    // mergeImages([
+                    //     {
+                    //         src: documentData,
+                    //         x: 0,
+                    //         y: 0
+                    //     },
+                    //     ...mergeData
+                    // ])
+                    this.mergeSignatureOnDocument(mergeData, documentData)
+                        .then(b64 => {
+                            documentData = b64;
+                            this.props.dispatch(showAppbar(1));
+                            this.setState({
+                                documentData: documentData,
+                                signatureData: resSignData,
+                                progress: false,
+                                signatureDataArray: signatureDataArray
+                            });
+                            this.rerender();
                         });
-                        this.rerender();
-                    });
                 } else {
                     this.props.dispatch(showAppbar(1));
                     this.setState({
@@ -722,28 +791,33 @@ class Document extends React.Component {
                                             mergeData.push({
                                                 src: signatureDataArray[index],
                                                 x: element.coordinates.x,
-                                                y: element.coordinates.y
+                                                y: element.coordinates.y,
+                                                width: 100,
+                                                height: 100
                                             });
                                     }
                                 });
-                                mergeImages([
-                                    {
-                                        src: documentData,
-                                        x: 0,
-                                        y: 0
-                                    },
-                                    ...mergeData
-                                ]).then(b64 => {
-                                    documentData = b64;
-                                    this.props.dispatch(showAppbar(1));
-                                    this.setState({
-                                        documentData: documentData,
-                                        signatureData: urlCreator.createObjectURL(resSignData.data),
-                                        progress: false,
-                                        signatureDataArray: signatureDataArray
+                                console.debug('Merge');
+                                // mergeImages([
+                                //     {
+                                //         src: documentData,
+                                //         x: 0,
+                                //         y: 0
+                                //     },
+                                //     ...mergeData
+                                // ])
+                                this.mergeSignatureOnDocument(mergeData, documentData)
+                                    .then(b64 => {
+                                        documentData = b64;
+                                        this.props.dispatch(showAppbar(1));
+                                        this.setState({
+                                            documentData: documentData,
+                                            signatureData: urlCreator.createObjectURL(resSignData.data),
+                                            progress: false,
+                                            signatureDataArray: signatureDataArray
+                                        });
+                                        this.rerender();
                                     });
-                                    this.rerender();
-                                });
                             } else {
                                 this.props.dispatch(showAppbar(1));
                                 this.setState({
@@ -806,30 +880,35 @@ class Document extends React.Component {
                                                     mergeData.push({
                                                         src: signatureDataArray[index],
                                                         x: element.coordinates.x,
-                                                        y: element.coordinates.y
+                                                        y: element.coordinates.y,
+                                                        width: 100,
+                                                        height: 100
                                                     });
                                             }
                                         });
-                                        mergeImages([
-                                            {
-                                                src: documentData,
-                                                x: 0,
-                                                y: 0
-                                            },
-                                            ...mergeData
-                                        ]).then(b64 => {
-                                            documentData = b64;
-                                            this.props.dispatch(showAppbar(1));
-                                            this.setState({
-                                                documentData: documentData,
-                                                signatureData: urlCreator.createObjectURL(
-                                                    resSignData.data
-                                                ),
-                                                progress: false,
-                                                signatureDataArray: signatureDataArray
+                                        console.debug('Merge');
+                                        // mergeImages([
+                                        //     {
+                                        //         src: documentData,
+                                        //         x: 0,
+                                        //         y: 0
+                                        //     },
+                                        //     ...mergeData
+                                        // ])
+                                        this.mergeSignatureOnDocument(mergeData, documentData)
+                                            .then(b64 => {
+                                                documentData = b64;
+                                                this.props.dispatch(showAppbar(1));
+                                                this.setState({
+                                                    documentData: documentData,
+                                                    signatureData: urlCreator.createObjectURL(
+                                                        resSignData.data
+                                                    ),
+                                                    progress: false,
+                                                    signatureDataArray: signatureDataArray
+                                                });
+                                                this.rerender();
                                             });
-                                            this.rerender();
-                                        });
                                     } else {
                                         this.props.dispatch(showAppbar(1));
                                         this.setState({
@@ -879,28 +958,33 @@ class Document extends React.Component {
                                         mergeData.push({
                                             src: signatureDataArray[index],
                                             x: element.coordinates.x,
-                                            y: element.coordinates.y
+                                            y: element.coordinates.y,
+                                            width: 100,
+                                            height: 100
                                         });
                                 }
                             });
-                            mergeImages([
-                                {
-                                    src: documentData,
-                                    x: 0,
-                                    y: 0
-                                },
-                                ...mergeData
-                            ]).then(b64 => {
-                                documentData = b64;
-                                this.props.dispatch(showAppbar(1));
-                                this.setState({
-                                    documentData: documentData,
-                                    signatureData: resSignData,
-                                    progress: false,
-                                    signatureDataArray: signatureDataArray
+                            console.debug('Merge');
+                            // mergeImages([
+                            //     {
+                            //         src: documentData,
+                            //         x: 0,
+                            //         y: 0
+                            //     },
+                            //     ...mergeData
+                            // ])
+                            this.mergeSignatureOnDocument(mergeData, documentData)
+                                .then(b64 => {
+                                    documentData = b64;
+                                    this.props.dispatch(showAppbar(1));
+                                    this.setState({
+                                        documentData: documentData,
+                                        signatureData: resSignData,
+                                        progress: false,
+                                        signatureDataArray: signatureDataArray
+                                    });
+                                    this.rerender();
                                 });
-                                this.rerender();
-                            });
                         } else {
                             this.props.dispatch(showAppbar(1));
                             this.setState({
