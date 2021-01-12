@@ -372,8 +372,8 @@ class Document extends React.Component {
 
                 // Resize immagine di firma
                 const base64 = this.imgSignatureGroup.get('Image')[0];
-                const tempWidth = (this.state.originalWidth / docWidth) * base64.width()
-                const tempHeight = (this.state.originalHeight / docWidth) * base64.height()
+                const tempWidth = (this.state.originalWidth / docWidth) * w
+                const tempHeight = (this.state.originalHeight / docHeight) * h
                 base64.width(tempWidth);
                 base64.height(tempHeight)
                 // var canvas = document.createElement('canvas');
@@ -396,7 +396,7 @@ class Document extends React.Component {
                     x: x * (this.state.originalWidth / docWidth),
                     // y: y * (this.state.originalHeight / imgHeight) + parseInt(this.state.originalSignHeight)
                     y: y * (this.state.originalHeight / docHeight),
-                    originalHeight: parseInt(h),
+                    originalHeight: tempHeight,
                     imgData: base64.toDataURL()
                 };
                 // console.debug('Imposto coor: ', outputCoordinates)
