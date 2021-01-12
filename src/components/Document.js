@@ -1023,6 +1023,7 @@ class Document extends React.Component {
         console.log('Original height: ', this.state.originalHeight);
         this.props.Output.forEach(element => {
             if (element) {
+                console.debug('element finalke: ', element);
                 const coordinateY = (this.state.originalHeight - (((element.coordinates.y + element.coordinates.originalHeight) * this.state.dpi) / this.state.dpi)) / this.state.scaleFor72DPI;
                 const coordinateX = ((element.coordinates.x * this.state.dpi) / this.state.dpi) / this.state.scaleFor72DPI;
                 console.log('Element coordinate y: ', coordinateY);
