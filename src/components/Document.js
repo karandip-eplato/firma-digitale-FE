@@ -329,8 +329,8 @@ class Document extends React.Component {
         // const x = e.nativeEvent.offsetX;
         // const y = e.nativeEvent.offsetY;
         if (this.state.signerMode === true) {
-            const imgWidth = document.getElementById('document').width;
-            const imgHeight = document.getElementById('document').height;
+            const docWidth = document.getElementById('document').width;
+            const docHeight = document.getElementById('document').height;
             console.log('Document height in 300 dpi: ', this.state.originalHeight);
             console.log('Document width in 300 dpi: ', this.state.originalWidth);
             console.log('Scale: ', this.state.scaleFor72DPI);
@@ -350,7 +350,7 @@ class Document extends React.Component {
                             y: element.coordinates.y,
                             // TODO questo height deve essere quello aggiornato
                             imgHeight: element.coordinates.originalHeight,
-                            imgData: element.coordinates.data
+                            imgData: this.imgSignatureGroup.get('Image')[0].toDataURL()
                         });
                 }
             });
@@ -365,13 +365,17 @@ class Document extends React.Component {
                 ...mergeData,
                 {
                     src: this.state.signatureData,
-                    x: x * (this.state.originalWidth / imgWidth),
-                    y: y * (this.state.originalHeight / imgHeight),
+                    x: x * (this.state.originalWidth / docWidth),
+                    y: y * (this.state.originalHeight / docHeight),
                 }
             ]).then(b64 => {
 
                 // Resize immagine di firma
                 const base64 = this.imgSignatureGroup.get('Image')[0];
+                const tempWidth = (this.state.originalWidth / docWidth) * base64.width()
+                const tempHeight = (this.state.originalHeight / docWidth) * base64.height()
+                base64.width(tempWidth);
+                base64.height(tempHeight)
                 // var canvas = document.createElement('canvas');
                 // var ctx = canvas.getContext('2d');
                 //
@@ -389,9 +393,9 @@ class Document extends React.Component {
                 let outputCoordinates = this.state.outputCoordinates;
                 outputCoordinates = {
                     pageNo: this.props.DocumentIndex + 1,
-                    x: x * (this.state.originalWidth / imgWidth),
+                    x: x * (this.state.originalWidth / docWidth),
                     // y: y * (this.state.originalHeight / imgHeight) + parseInt(this.state.originalSignHeight)
-                    y: y * (this.state.originalHeight / imgHeight),
+                    y: y * (this.state.originalHeight / docHeight),
                     originalHeight: parseInt(h),
                     imgData: base64.toDataURL()
                 };
@@ -624,7 +628,7 @@ class Document extends React.Component {
                                     const index = this.state.signerNames.indexOf(element.user);
                                     if (currentDocumentIndex === element.coordinates.pageNo - 1)
                                         mergeData.push({
-                                            src: signatureDataArray[index],
+                                            src: element.coordinates.imgData,
                                             x: element.coordinates.x,
                                             y: element.coordinates.y,
                                         });
@@ -641,6 +645,7 @@ class Document extends React.Component {
                             // ])
                             this.mergeSignatureOnDocument(mergeData, documentData)
                                 .then(b64 => {
+                                    console.debug('123');
                                     documentData = b64;
                                     this.props.dispatch(showAppbar(1));
                                     this.setState({
@@ -697,7 +702,7 @@ class Document extends React.Component {
                             console.debug('B64: ', element)
                             if (currentDocumentIndex === element.coordinates.pageNo - 1)
                                 mergeData.push({
-                                    src: signatureDataArray[index],
+                                    src: element.coordinates.imgData,
                                     x: element.coordinates.x,
                                     y: element.coordinates.y,
                                 });
@@ -714,6 +719,7 @@ class Document extends React.Component {
                     // ])
                     this.mergeSignatureOnDocument(mergeData, documentData)
                         .then(b64 => {
+                            console.debug('456');
                             documentData = b64;
                             this.props.dispatch(showAppbar(1));
                             this.setState({
@@ -1256,6 +1262,7 @@ class Document extends React.Component {
 
                                     </div>
                                     {this.state.showCursor === true && (
+                                        console.debug('original wi: ',  this.state.originalSignWidth, this.state.originalWidth, document.getElementById('document').width),
                                         <img
                                             src={
                                                 this.state.signatureDataArray[this.props.SignatureIndex]
