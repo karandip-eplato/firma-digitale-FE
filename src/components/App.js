@@ -44,7 +44,7 @@ class App extends React.Component {
             const obj = {
                 tabClosed: true
             };
-            window.parent.postMessage(obj, '*');
+            window.window.parent.postMessage(obj, '*');
             console.log('Post message di chiusura inviato');
            return "Post message di chiusira inviato";
         };
@@ -84,7 +84,7 @@ class App extends React.Component {
                 className: data.className
             };
             axios
-                .post('http://localhost:8220/auth', request)
+                .post('/auth', request)
                 .then(res => {
                     const signerNames = [];
                     let counter = 0;
@@ -196,7 +196,7 @@ class App extends React.Component {
     componentDidMount = () => {
         this.setState({progress: true});
         window.addEventListener('message', this.receiveMessage, false);
-        window.parent.postMessage(true, '*');
+        window.window.parent.postMessage(true, '*');
         document.onkeydown = function (e) {
             e = e || window.event;
             switch (e.which || e.keyCode) {

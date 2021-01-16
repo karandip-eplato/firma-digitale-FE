@@ -40,7 +40,7 @@ class Document extends React.Component {
         const obj = {
             tabClosed: true
         };
-        window.parent.postMessage(obj, '*');
+        window.window.parent.postMessage(obj, '*');
     };
     state = {};
 
@@ -296,18 +296,9 @@ class Document extends React.Component {
 
     // Metodo che viene chiamato quando clicco per depositare la firma
     _onMouseMove(x, y, w, h, newHeightIn72Dpi, newWidthIn72Dpi) {
-        console.debug('x, y, w e h: ', x, y, w, h);
-        console.debug('new size in 72 w e h: ', newWidthIn72Dpi, newHeightIn72Dpi);
-        // const x = e.nativeEvent.offsetX;
-        // const y = e.nativeEvent.offsetY;
         if (this.state.signerMode === true) {
             const docWidth = document.getElementById('document').width;
             const docHeight = document.getElementById('document').height;
-            console.log('Document height in 300 dpi: ', this.state.originalHeight);
-            console.log('Document width in 300 dpi: ', this.state.originalWidth);
-            console.log('Scale: ', this.state.scaleFor72DPI);
-            console.log('Document height in 72 dpi: ', this.state.originalHeight / this.state.scaleFor72DPI);
-            console.log('Document width in 72 dpi: ', this.state.originalWidth / this.state.scaleFor72DPI);
             const mergeData = [];
             this.props.Output.forEach(element => {
                 if (element) {
@@ -681,7 +672,7 @@ class Document extends React.Component {
         } else {
             axios
                 .get(
-                    'http://localhost:8220/getImage?pdfName=' +
+                    '/getImage?pdfName=' +
                     this.state.fileName +
                     '&pageNumber=' +
                     currentDocumentIndex,
@@ -953,7 +944,7 @@ class Document extends React.Component {
                 output.push(null);
             }
         });
-        window.parent.postMessage(output, '*');
+        window.window.parent.postMessage(output, '*');
         // this.componentDidUnmount();
         axios.get(
             '/cleanUp?pdfName=' +
