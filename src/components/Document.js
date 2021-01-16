@@ -111,7 +111,9 @@ class Document extends React.Component {
 
     mergeImage() {
         const sign = this.imgSignatureGroup.get('Image')[0];
-        this._onMouseMove(sign.absolutePosition().x, sign.absolutePosition().y, sign.width(), sign.height());
+        const newHeight = sign.height() * (this.state.originalHeight / document.getElementById('document').height) / this.state.scaleFor72DPI
+        const newWidth = sign.width() * (this.state.originalWidth / document.getElementById('document').width) / this.state.scaleFor72DPI
+        this._onMouseMove(sign.absolutePosition().x, sign.absolutePosition().y, sign.width(), sign.height(), newHeight, newWidth);
         // this.imgSignatureGroup.destroy();
     }
 
@@ -122,15 +124,15 @@ class Document extends React.Component {
         const signWidth = document.getElementById('document-container')
             ? (this.state.originalSignWidth * (document.getElementById('document').width / this.state.originalWidth))
             : '0px'
-        console.debug('Original h: ', this.state.originalSignHeight, signHeight)
         // KONVA js
         // inserire aletzza e larghezza di firma da dare al div contenitore
         let width = document.getElementById('document').offsetWidth;
         let height = document.getElementById('document').offsetHeight;
 
-        console.log('Aletzza: ', document.body.scrollHeight, document.getElementById('document-container').offsetHeight)
+
         this.setState({
-            previewY: (document.body.scrollHeight - document.getElementById('document-container').offsetHeight)
+            previewY: (document.body.scrollHeight - document.getElementById('document-container').offsetHeight),
+            previewX: (document.body.scrollWidth - document.getElementById('document-container').offsetWidth) / 2,
         })
 
         const stage = new Konva.Stage({
@@ -148,7 +150,10 @@ class Document extends React.Component {
             width: signWidth
         });
 
-        console.debug('img w, h: ', signWidth, signHeight);
+
+
+        const imgWidth = document.getElementById('document').width;
+        const imgHeight = document.getElementById('document').height;
 
         this.imgSignatureGroup = new Konva.Group({
             x: e.nativeEvent.offsetX,
@@ -171,8 +176,6 @@ class Document extends React.Component {
         imageObj1.src = this.state.signatureData;
         // Abilito il tasto "prossimo firmatario"
         const img = this.imgSignatureGroup.get('Image')[0]
-        const imgWidth = document.getElementById('document').width;
-        const imgHeight = document.getElementById('document').height;
         const outputCoordinates = {
             pageNo: this.props.DocumentIndex + 1,
             x: img.absolutePosition().x * (this.state.originalWidth / imgWidth),
@@ -232,29 +235,6 @@ class Document extends React.Component {
             image.width(width);
             image.height(height)
         }
-
-        console.log('position: ', image.absolutePosition(), height);
-        // const imgWidth = document.getElementById('document').width;
-        // const imgHeight = document.getElementById('document').height;
-        // const outputCoordinates = {
-        //     pageNo: this.props.DocumentIndex + 1,
-        //     x: image.absolutePosition().x * (this.state.originalWidth / imgWidth),
-        //     // y: y * (this.state.originalHeight / imgHeight) + parseInt(this.state.originalSignHeight)
-        //     y: image.absolutePosition().y * (this.state.originalHeight / imgHeight),
-        //     originalHeight: parseInt(this.state.originalSignHeight)
-        // };
-        // console.debug('imposto output');
-        // this.props.dispatch(
-        //     setOutput(
-        //         {
-        //             user: this.state.signerNames[this.props.SignatureIndex],
-        //             coordinates: outputCoordinates
-        //         },
-        //         this.props.SignatureIndex
-        //     )
-        // );
-        // this._onMouseMove(image.absolutePosition().x, image.absolutePosition().y);
-        // group.destroy();
     }
 
     addAnchor(group, x, y, name) {
@@ -313,19 +293,11 @@ class Document extends React.Component {
         ])
     }
 
-     getBase64Image(img) {
-        var canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        var ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0);
-        var dataURL = canvas.toDataURL("image/png");
-        return dataURL.replace(/^data:image\/(png|jpg);base64,/, "");
-    }
 
     // Metodo che viene chiamato quando clicco per depositare la firma
-    _onMouseMove(x, y, w, h) {
-        console.debug('x e y: ', x, y, w, h)
+    _onMouseMove(x, y, w, h, newHeightIn72Dpi, newWidthIn72Dpi) {
+        console.debug('x, y, w e h: ', x, y, w, h);
+        console.debug('new size in 72 w e h: ', newWidthIn72Dpi, newHeightIn72Dpi);
         // const x = e.nativeEvent.offsetX;
         // const y = e.nativeEvent.offsetY;
         if (this.state.signerMode === true) {
@@ -350,12 +322,13 @@ class Document extends React.Component {
                             y: element.coordinates.y,
                             // TODO questo height deve essere quello aggiornato
                             imgHeight: element.coordinates.originalHeight,
-                            imgData: this.imgSignatureGroup.get('Image')[0].toDataURL()
+                            imgData: this.imgSignatureGroup.get('Image')[0].toDataURL(),
+                            newHeightIn72Dpi: element.coordinates.newHeightIn72Dpi,
+                            newWidthIn72Dpi: element.coordinates.newWidthIn72Dpi,
                         });
                 }
             });
 
-            console.debug('Merge');
             mergeImages([
                 {
                     src: this.originalDocument,
@@ -376,18 +349,6 @@ class Document extends React.Component {
                 const tempHeight = (this.state.originalHeight / docHeight) * h
                 base64.width(tempWidth);
                 base64.height(tempHeight)
-                // var canvas = document.createElement('canvas');
-                // var ctx = canvas.getContext('2d');
-                //
-                // // We set the dimensions at the wanted size.
-                // canvas.width = 500;
-                // canvas.height = 500;
-                //
-                // // We resize the image with the canvas method drawImage();
-                // ctx.drawImage(base64, 0, 0, 500, 500);
-                //
-                // var dataURI = canvas.toDataURL();
-                console.debug('Cursor: ', base64.toDataURL());
                 this.imgSignatureGroup.destroy();
 
                 let outputCoordinates = this.state.outputCoordinates;
@@ -396,10 +357,11 @@ class Document extends React.Component {
                     x: x * (this.state.originalWidth / docWidth),
                     // y: y * (this.state.originalHeight / imgHeight) + parseInt(this.state.originalSignHeight)
                     y: y * (this.state.originalHeight / docHeight),
+                    newHeightIn72Dpi: newHeightIn72Dpi,
+                    newWidthIn72Dpi: newWidthIn72Dpi,
                     originalHeight: tempHeight,
                     imgData: base64.toDataURL()
                 };
-                // console.debug('Imposto coor: ', outputCoordinates)
 
                 this.props.dispatch(
                     setOutput(
@@ -419,8 +381,6 @@ class Document extends React.Component {
                     heightIn72Dpi: this.state.originalHeight / this.state.scaleFor72DPI,
                     widthIn72Dpi: this.state.originalWidth / this.state.scaleFor72DPI
                 });
-                console.log('Document height in 72 dpi in state: ', this.state.heightIn72Dpi);
-                console.log('Document width in 72 dpi in state: ', this.state.widthIn72Dpi);
 
                 this.props.dispatch(
                     setOutput(
@@ -634,18 +594,8 @@ class Document extends React.Component {
                                         });
                                 }
                             });
-                            console.debug('Merge');
-                            // mergeImages([
-                            //     {
-                            //         src: documentData,
-                            //         x: 0,
-                            //         y: 0
-                            //     },
-                            //     ...mergeData
-                            // ])
                             this.mergeSignatureOnDocument(mergeData, documentData)
                                 .then(b64 => {
-                                    console.debug('123');
                                     documentData = b64;
                                     this.props.dispatch(showAppbar(1));
                                     this.setState({
@@ -673,7 +623,6 @@ class Document extends React.Component {
                 this.props.dispatch(setNumberOfDocuments(this.state.noOfDocuments));
                 const img = document.createElement('img');
                 img.src = urlCreator.createObjectURL(resDocument.data);
-                console.debug('size: ', img.width, img.height);
                 img.onload = () => {
                     this.setState({
                         originalWidth: img.width,
@@ -698,8 +647,6 @@ class Document extends React.Component {
                     const mergeData = [];
                     this.props.Output.forEach(element => {
                         if (element) {
-                            const index = this.state.signerNames.indexOf(element.user);
-                            console.debug('B64: ', element)
                             if (currentDocumentIndex === element.coordinates.pageNo - 1)
                                 mergeData.push({
                                     src: element.coordinates.imgData,
@@ -708,18 +655,8 @@ class Document extends React.Component {
                                 });
                         }
                     });
-                    console.debug('Merge');
-                    // mergeImages([
-                    //     {
-                    //         src: documentData,
-                    //         x: 0,
-                    //         y: 0
-                    //     },
-                    //     ...mergeData
-                    // ])
                     this.mergeSignatureOnDocument(mergeData, documentData)
                         .then(b64 => {
-                            console.debug('456');
                             documentData = b64;
                             this.props.dispatch(showAppbar(1));
                             this.setState({
@@ -803,15 +740,6 @@ class Document extends React.Component {
                                             });
                                     }
                                 });
-                                console.debug('Merge');
-                                // mergeImages([
-                                //     {
-                                //         src: documentData,
-                                //         x: 0,
-                                //         y: 0
-                                //     },
-                                //     ...mergeData
-                                // ])
                                 this.mergeSignatureOnDocument(mergeData, documentData)
                                     .then(b64 => {
                                         documentData = b64;
@@ -892,15 +820,6 @@ class Document extends React.Component {
                                                     });
                                             }
                                         });
-                                        console.debug('Merge');
-                                        // mergeImages([
-                                        //     {
-                                        //         src: documentData,
-                                        //         x: 0,
-                                        //         y: 0
-                                        //     },
-                                        //     ...mergeData
-                                        // ])
                                         this.mergeSignatureOnDocument(mergeData, documentData)
                                             .then(b64 => {
                                                 documentData = b64;
@@ -970,15 +889,6 @@ class Document extends React.Component {
                                         });
                                 }
                             });
-                            console.debug('Merge');
-                            // mergeImages([
-                            //     {
-                            //         src: documentData,
-                            //         x: 0,
-                            //         y: 0
-                            //     },
-                            //     ...mergeData
-                            // ])
                             this.mergeSignatureOnDocument(mergeData, documentData)
                                 .then(b64 => {
                                     documentData = b64;
@@ -1020,22 +930,23 @@ class Document extends React.Component {
 
     post = () => {
         const output = [];
-        console.log('Original height: ', this.state.originalHeight);
         this.props.Output.forEach(element => {
             if (element) {
-                console.debug('element finalke: ', element);
                 const coordinateY = (this.state.originalHeight - (((element.coordinates.y + element.coordinates.originalHeight) * this.state.dpi) / this.state.dpi)) / this.state.scaleFor72DPI;
                 const coordinateX = ((element.coordinates.x * this.state.dpi) / this.state.dpi) / this.state.scaleFor72DPI;
-                console.log('Element coordinate y: ', coordinateY);
-                console.log('Element coordinate x: ', coordinateX);
                 const tempCoordinates = {
                     pageNo: element.coordinates.pageNo,
                     x: coordinateX >= 0 ? coordinateX : 0,
                     y: coordinateY >= 0 ? coordinateY : 0
                 };
+                const newSize = {
+                    h: element.coordinates.newHeightIn72Dpi,
+                    w: element.coordinates.newWidthIn72Dpi
+                }
                 const temp = {
                     user: element.user,
-                    coordinates: tempCoordinates
+                    coordinates: tempCoordinates,
+                    size: newSize
                 };
                 output.push(temp);
             } else {
@@ -1138,7 +1049,6 @@ class Document extends React.Component {
                                                 <Button
                                                     color="secondary"
                                                     onClick={() => {
-                                                        console.debug('click prox: ', this.state.outputCoordinates)
                                                         this.mergeImage();
                                                         // this.props.dispatch(
                                                         //     setOutput(
@@ -1246,7 +1156,7 @@ class Document extends React.Component {
                                             // background: "green",
                                             position: 'absolute',
                                             top: this.state.previewY,
-                                            left: 0
+                                            left: this.state.previewX
 
                                         }}>
                                             {/*<img src={this.state.signatureData}*/}
@@ -1263,7 +1173,6 @@ class Document extends React.Component {
 
                                     </div>
                                     {this.state.showCursor === true && (
-                                        console.debug('original wi: ',  this.state.originalSignWidth, this.state.originalWidth, document.getElementById('document').width),
                                         <img
                                             src={
                                                 this.state.signatureDataArray[this.props.SignatureIndex]
