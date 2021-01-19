@@ -245,7 +245,7 @@ class Document extends React.Component {
             x: x,
             y: y,
             stroke: '#666',
-            fill: '#ddd',
+            fill: '#f0c030',
             strokeWidth: 2,
             radius: 8,
             name: name,
